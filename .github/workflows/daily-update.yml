@@ -1,0 +1,52 @@
+name: Daily Epic Games Free Games RSS Update
+
+on:
+  schedule:
+    # Run daily at 12:00 UTC
+    - cron: '0 12 * * *'
+  workflow_dispatch: # Allow manual triggering
+
+jobs:
+  update-rss:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0  # Fetch all history for tagging
+      
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.x'
+        
+    - name: Run RSS generator script
+      run: |
+        python3 epic_rss.py
+        
+    - name: Commit and push RSS updates
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        
+        # Generate timestamp
+        TIMESTAMP=$(date +"%Y%m%d-%H%M%S")
+        
+        # Add RSS file
+        git add epic_free_games.rss
+        
+        # Check if there are changes to commit
+        if git diff --staged --quiet; then
+          echo "No changes to RSS feed"
+        else
+          git commit -m "Epic Games RSS update: $TIMESTAMP"
+          git push origin main
+          
+          echo "RSS feed updated and pushed to main branch"
+          echo "RSS feed available at: https://raw.githubusercontent.com/${{ github.repository }}/main/epic_free_games.rss"
+        fi
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
